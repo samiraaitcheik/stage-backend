@@ -1,7 +1,7 @@
 import express from "express";
-import * as superAdminController from "../superAdminController.js";
-import { authenticate } from "../middlewares/authenticate.js";
-import { roleMiddleware } from "../middlewares/rbacMiddleware.js";
+import * as superAdminController from "../../controllers/superAdminController.js";
+import { authenticate } from "../authenticate.js";
+import { roleMiddleware } from "../rbacMiddleware.js";
 
 const router = express.Router();
 

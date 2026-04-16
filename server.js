@@ -3,8 +3,8 @@ import express    from "express";
 import cors       from "cors";
 import { Router } from "express";
 
-import authRoutes                    from "./routes/authRoutes.js";
-import superAdminRoutes             from "./routes/superAdminRoutes.js";
+import authRoutes                    from "./middlewares/routes/authRoutes.js";
+import superAdminRoutes             from "./middlewares/routes/superAdminRoutes.js";
 import { authenticate, requireAdmin, requireSuperAdmin } from "./middlewares/authenticate.js";
 import { licenseMiddleware }       from "./middlewares/licenseMiddleware.js";
 
@@ -45,12 +45,13 @@ api.use(authenticate);
 api.use(licenseMiddleware);
 
 // Companies — super admin only for global company management
-api.post  ("/companies",     requireSuperAdmin, companyCtrl.createCompany);
-api.get   ("/companies",     requireSuperAdmin, companyCtrl.getCompanies);
-api.get   ("/companies/mine", companyCtrl.getMyCompany);
-api.get   ("/companies/:id", companyCtrl.getCompany);
-api.put   ("/companies/:id", requireSuperAdmin, companyCtrl.updateCompany);
-api.delete("/companies/:id", requireSuperAdmin, companyCtrl.deleteCompany);
+// IMPORTANT: /companies/mine doit être AVANT /companies/:id pour éviter le conflit de route
+api.post  ("/companies",      requireSuperAdmin, companyCtrl.createCompany);
+api.get   ("/companies/mine", companyCtrl.getMyCompany);  // ← avant /:id
+api.get   ("/companies",      requireSuperAdmin, companyCtrl.getCompanies);
+api.get   ("/companies/:id",  companyCtrl.getCompany);
+api.put   ("/companies/:id",  requireSuperAdmin, companyCtrl.updateCompany);
+api.delete("/companies/:id",  requireSuperAdmin, companyCtrl.deleteCompany);
 
 // Users — admin only
 api.post  ("/users",     requireAdmin, userCtrl.createUser);
