@@ -13,7 +13,7 @@ const parseDates = (data) => ({
 
 export const createContract = async (data) => {
   return await prisma.employeeContract.create({
-    data: parseDates(data), // ✅ fix
+    data: parseDates(data), 
     include: includeRelations,
   });
 };
@@ -42,7 +42,7 @@ export const updateContract = async (id, data) => {
   await getContractById(id);
   return await prisma.employeeContract.update({
     where: { id },
-    data: parseDates(data), // ✅ fix
+    data: parseDates(data), 
     include: includeRelations,
   });
 };
