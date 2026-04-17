@@ -27,8 +27,12 @@ export const getCompany = async (req, res) => {
   } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 };
 export const updateCompany = async (req, res) => {
-  try { res.json(await companyService.updateCompany(req.params.id, req.body)); }
-  catch (error) { res.status(error.status || 400).json({ error: error.message }); }
+  try {
+    if (!(req.user.isSuperAdmin || req.user.role === 'SUPER_ADMIN') && req.user.companyId !== req.params.id) {
+      return res.status(403).json({ error: "Accès refusé. Vous ne pouvez modifier que votre entreprise." });
+    }
+    res.json(await companyService.updateCompany(req.params.id, req.body));
+  } catch (error) { res.status(error.status || 400).json({ error: error.message }); }
 };
 export const deleteCompany = async (req, res) => {
   try { await companyService.deleteCompany(req.params.id); res.json({ message: "Deleted" }); }

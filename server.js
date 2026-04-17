@@ -15,10 +15,8 @@ import * as positionCtrl   from "./controllers/positionController.js";
 import * as employeeCtrl   from "./controllers/employeeController.js";
 import * as contractCtrl   from "./controllers/employeeContractController.js";
 import * as attendanceCtrl from "./controllers/attendanceController.js";
-import * as payslipCtrl    from "./controllers/payslipController.js";
 import * as variableCtrl   from "./controllers/variableItemController.js";
 import * as licenseCtrl    from "./controllers/licenseController.js";
-
 console.log("JWT_SECRET =", process.env.JWT_SECRET);
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -47,7 +45,7 @@ api.post  ("/companies",      requireSuperAdmin, companyCtrl.createCompany);
 api.get   ("/companies/mine", companyCtrl.getMyCompany);  // ← avant /:id
 api.get   ("/companies",      requireSuperAdmin, companyCtrl.getCompanies);
 api.get   ("/companies/:id",  companyCtrl.getCompany);
-api.put   ("/companies/:id",  requireSuperAdmin, companyCtrl.updateCompany);
+api.put   ("/companies/:id",  companyCtrl.updateCompany);
 api.delete("/companies/:id",  requireSuperAdmin, companyCtrl.deleteCompany);
 
 // Users — admin only

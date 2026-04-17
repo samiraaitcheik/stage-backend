@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
+import * as companyService from "../services/companyService.js";
 
 /**
  * Créer un nouvel utilisateur super admin
@@ -51,31 +52,10 @@ export const createCompany = async (req, res) => {
       return res.status(400).json({ error: "Le nom de l'entreprise est obligatoire." });
     }
 
-    const company = await prisma.company.create({
-      data: {
-        name:          name.trim(),
-        legalName:     legalName     || null,
-        taxIdentifier: taxIdentifier || null,
-        rcNumber:      rcNumber      || null,
-        iceNumber:     iceNumber     || null,
-        cnssNumber:    cnssNumber    || null,
-        email:         email         || null,
-        phone:         phone         || null,
-        address:       address       || null,
-        city:          city          || null,
-        country:       country       || "Maroc",
-        timezone:      timezone      || "Africa/Casablanca",
-        currency:      currency      || "MAD",
-        medicalSector: medicalSector === true || medicalSector === "true",
-        status:        status        || "ACTIVE",
-      },
-      select: {
-        id: true, name: true, legalName: true, taxIdentifier: true,
-        rcNumber: true, iceNumber: true, cnssNumber: true,
-        email: true, phone: true, address: true, city: true,
-        country: true, timezone: true, currency: true,
-        medicalSector: true, status: true, createdAt: true,
-      },
+    const company = await companyService.createCompany({
+      name, legalName, taxIdentifier, rcNumber, iceNumber, cnssNumber,
+      email, phone, address, city, country, timezone, currency,
+      medicalSector, status,
     });
 
     res.status(201).json({ message: "Company created successfully", company });
@@ -330,90 +310,7 @@ export const createCompanyWithLicenseAndUsers = async (req, res) => {
       }
     }
 
-    // Utiliser une transaction pour créer tout en une fois
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Créer l'entreprise
-      const newCompany = await tx.company.create({
-        data: {
-          name:          company.name.trim(),
-          legalName:     company.legalName     || null,
-          taxIdentifier: company.taxIdentifier || null,
-          rcNumber:      company.rcNumber      || null,
-          iceNumber:     company.iceNumber     || null,
-          cnssNumber:    company.cnssNumber    || null,
-          email:         company.email         || null,
-          phone:         company.phone         || null,
-          address:       company.address       || null,
-          city:          company.city          || null,
-          country:       company.country       || "Maroc",
-          timezone:      company.timezone      || "Africa/Casablanca",
-          currency:      company.currency      || "MAD",
-          medicalSector: company.medicalSector === true || company.medicalSector === "true",
-          status:        company.status        || "ACTIVE",
-        },
-        select: {
-          id: true, name: true, legalName: true, taxIdentifier: true,
-          rcNumber: true, iceNumber: true, cnssNumber: true,
-          email: true, phone: true, address: true, city: true,
-          country: true, timezone: true, currency: true,
-          medicalSector: true, status: true, createdAt: true,
-        },
-      });
-
-      // 2. Créer la licence
-      const newLicense = await tx.license.create({
-        data: {
-          companyId:     newCompany.id,
-          planCode:      license.planCode,
-          billingCycle:  license.billingCycle    || "MONTHLY",
-          status:        license.status          || "ACTIVE",
-          maxUsers:      license.maxUsers        ? Number(license.maxUsers)        : null,
-          maxEmployees:  license.maxEmployees    ? Number(license.maxEmployees)    : null,
-          maxStorageMb:  license.maxStorageMb    ? Number(license.maxStorageMb)    : null,
-          startsAt:      new Date(license.startsAt),
-          endsAt:        license.endsAt && license.endsAt !== "" ? new Date(license.endsAt) : null,
-          payrollEnabled:  license.payrollEnabled  !== false  && license.payrollEnabled  !== "false",
-          rhEnabled:      license.rhEnabled       !== false  && license.rhEnabled       !== "false",
-          cnssEnabled:    license.cnssEnabled     === true   || license.cnssEnabled     === "true",
-          taxEnabled:     license.taxEnabled      === true   || license.taxEnabled      === "true",
-          damancomEnabled: license.damancomEnabled === true   || license.damancomEnabled === "true",
-          notes:          license.notes           || null,
-        },
-        include: { company: { select: { id: true, name: true } } },
-      });
-
-      // 3. Créer les utilisateurs
-      const createdUsers = [];
-      for (const userData of users) {
-        const passwordHash = await bcrypt.hash(userData.password, 10);
-
-        const user = await tx.user.create({
-          data: {
-            companyId: newCompany.id,
-            firstName: userData.firstName,
-            lastName:  userData.lastName,
-            fullName:  `${userData.firstName} ${userData.lastName}`,
-            email:     userData.email,
-            phone:     userData.phone || null,
-            passwordHash,
-            role:      userData.role || "ADMIN",
-            status:    userData.status || "ACTIVE",
-            permissions: userData.permissions || [
-              "dashboard", "employees", "organisation", "attendance",
-              "contracts", "payroll", "reports", "users",
-            ],
-          },
-          select: {
-            id: true, email: true, firstName: true, lastName: true,
-            role: true, status: true,
-            company: { select: { id: true, name: true } },
-          },
-        });
-        createdUsers.push(user);
-      }
-
-      return { company: newCompany, license: newLicense, users: createdUsers };
-    });
+    const result = await companyService.createCompanyWithLicenseAndUsers(req.body);
 
     res.status(201).json({
       message: "Entreprise, licence et utilisateurs créés avec succès",
