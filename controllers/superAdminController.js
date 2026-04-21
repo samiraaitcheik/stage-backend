@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
 import * as companyService from "../services/companyService.js";
+// import puppeteer from "puppeteer"; // Temporarily commented
 
 /**
  * Créer un nouvel utilisateur super admin
@@ -319,5 +320,131 @@ export const createCompanyWithLicenseAndUsers = async (req, res) => {
   } catch (error) {
     console.error("Create company with license and users error:", error);
     res.status(500).json({ error: "Échec de la création de l'entreprise avec licence et utilisateurs" });
+  }
+};
+
+/**
+ * Générer un contrat PDF pour une entreprise
+ * NOUVEAU: POST /super-admin/generate-contract
+ */
+export const generateContract = async (req, res) => {
+  try {
+    if (!(req.user?.isSuperAdmin || req.user?.role === "SUPER_ADMIN")) {
+      return res.status(403).json({ error: "Only super admins can generate contracts" });
+    }
+
+    const { companyName, legalName, address, city, country, taxIdentifier, rcNumber, iceNumber, cnssNumber, email, phone, license, users, generatedAt } = req.body;
+
+    // Generate HTML contract that can be printed to PDF
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Contrat de Service - ${companyName}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; color: #333; }
+        .header { text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #4f46e5; margin: 0; }
+        .section { margin: 25px 0; }
+        .section h2 { color: #1f2937; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+        .info-item { padding: 10px; background: #f9fafb; border-radius: 5px; }
+        .info-item strong { color: #374151; display: block; margin-bottom: 5px; }
+        .users-list { margin: 15px 0; }
+        .user-item { padding: 10px; margin: 8px 0; background: #f3f4f6; border-radius: 5px; }
+        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #6b7280; }
+        .badge { display: inline-block; padding: 4px 8px; background: #4f46e5; color: white; border-radius: 12px; font-size: 12px; margin: 2px; }
+        .print-btn { position: fixed; top: 20px; right: 20px; padding: 10px 20px; background: #4f46e5; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        @media print { .print-btn { display: none; } }
+      </style>
+    </head>
+    <body>
+      <button class="print-btn" onclick="window.print()">🖨️ Imprimer en PDF</button>
+      <div class="header">
+        <h1>CONTRAT DE SERVICE</h1>
+        <h2>${companyName}</h2>
+        <p>Date: ${new Date(generatedAt).toLocaleDateString('fr-FR')}</p>
+      </div>
+
+      <div class="section">
+        <h2>Informations de l'entreprise</h2>
+        <div class="info-grid">
+          <div class="info-item"><strong>Nom commercial:</strong> ${companyName}</div>
+          <div class="info-item"><strong>Raison sociale:</strong> ${legalName || 'N/A'}</div>
+          <div class="info-item"><strong>Adresse:</strong> ${address || 'N/A'}</div>
+          <div class="info-item"><strong>Ville:</strong> ${city || 'N/A'}</div>
+          <div class="info-item"><strong>Pays:</strong> ${country || 'Maroc'}</div>
+          <div class="info-item"><strong>Email:</strong> ${email || 'N/A'}</div>
+          <div class="info-item"><strong>Téléphone:</strong> ${phone || 'N/A'}</div>
+          <div class="info-item"><strong>Identifiant fiscal:</strong> ${taxIdentifier || 'N/A'}</div>
+          <div class="info-item"><strong>Numéro RC:</strong> ${rcNumber || 'N/A'}</div>
+          <div class="info-item"><strong>Numéro ICE:</strong> ${iceNumber || 'N/A'}</div>
+          <div class="info-item"><strong>Numéro CNSS:</strong> ${cnssNumber || 'N/A'}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Détails de la licence</h2>
+        <div class="info-grid">
+          <div class="info-item"><strong>Plan:</strong> ${license?.planCode || 'N/A'}</div>
+          <div class="info-item"><strong>Statut:</strong> <span class="badge">${license?.status || 'N/A'}</span></div>
+          <div class="info-item"><strong>Cycle de facturation:</strong> ${license?.billingCycle || 'N/A'}</div>
+          <div class="info-item"><strong>Date de début:</strong> ${license?.startsAt ? new Date(license.startsAt).toLocaleDateString('fr-FR') : 'N/A'}</div>
+          <div class="info-item"><strong>Date de fin:</strong> ${license?.endsAt ? new Date(license.endsAt).toLocaleDateString('fr-FR') : 'Illimité'}</div>
+          <div class="info-item"><strong>Max utilisateurs:</strong> ${license?.maxUsers || 'Illimité'}</div>
+          <div class="info-item"><strong>Max employés:</strong> ${license?.maxEmployees || 'Illimité'}</div>
+          <div class="info-item"><strong>Max stockage:</strong> ${license?.maxStorageMb ? license.maxStorageMb + ' Mo' : 'Illimité'}</div>
+        </div>
+        
+        <h3>Fonctionnalités activées:</h3>
+        <div>
+          ${license?.payrollEnabled ? '<span class="badge">Paie</span>' : ''}
+          ${license?.rhEnabled ? '<span class="badge">RH</span>' : ''}
+          ${license?.cnssEnabled ? '<span class="badge">CNSS</span>' : ''}
+          ${license?.taxEnabled ? '<span class="badge">Fiscal</span>' : ''}
+          ${license?.damancomEnabled ? '<span class="badge">Damancom</span>' : ''}
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Utilisateurs autorisés (${users?.length || 0})</h2>
+        <div class="users-list">
+          ${users?.map(user => `
+            <div class="user-item">
+              <strong>${user.firstName} ${user.lastName}</strong> - ${user.email}<br>
+              Rôle: <span class="badge">${user.role}</span> | Statut: <span class="badge">${user.status}</span>
+            </div>
+          `).join('') || '<p>Aucun utilisateur</p>'}
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Termes et conditions</h2>
+        <p>Ce contrat de service régit les conditions d'utilisation de la plateforme de gestion RH pour l'entreprise ${companyName}.</p>
+        <ul>
+          <li>La licence est valable selon les termes spécifiés dans la section "Détails de la licence"</li>
+          <li>L'entreprise s'engage à respecter les limites d'utilisateurs et d'employés spécifiées</li>
+          <li>Les fonctionnalités sont disponibles selon les options activées dans la licence</li>
+          <li>Toute utilisation au-delà des limites prévues nécessitera une mise à niveau de la licence</li>
+          <li>Le service est fourni "tel quel" sans garantie explicite ou implicite</li>
+        </ul>
+      </div>
+
+      <div class="footer">
+        <p>Ce contrat a été généré automatiquement le ${new Date(generatedAt).toLocaleDateString('fr-FR')} à ${new Date(generatedAt).toLocaleTimeString('fr-FR')}</p>
+        <p>Pour toute question, contactez votre administrateur système.</p>
+      </div>
+    </body>
+    </html>
+    `;
+
+    // Send HTML response instead of PDF
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+    
+  } catch (error) {
+    console.error("Generate contract error:", error);
+    res.status(500).json({ error: "Failed to generate contract" });
   }
 };

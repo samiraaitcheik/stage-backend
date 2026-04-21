@@ -42,4 +42,10 @@ router.post("/admins", ...SA, superAdminController.createSuperAdmin);
  */
 router.post("/companies-with-license-and-users", ...SA, superAdminController.createCompanyWithLicenseAndUsers);
 
+/**
+ * Générer un contrat PDF pour une entreprise
+ * POST /super-admin/generate-contract
+ */
+router.post("/generate-contract", ...SA, superAdminController.generateContract);
+
 export default router;

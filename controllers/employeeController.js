@@ -33,6 +33,25 @@ export const getEmployees = async (req, res) => {
   }
 };
 
+/**
+ * Get employees filtered by departments
+ * Query params: departmentIds (comma-separated IDs)
+ */
+export const getEmployeesByDepartments = async (req, res) => {
+  try {
+    const companyId = req.user.isSuperAdmin || req.user.role === 'SUPER_ADMIN' ? undefined : req.user.companyId;
+    const departmentIdsStr = req.query.departmentIds || '';
+    const departmentIds = departmentIdsStr
+      ? departmentIdsStr.split(',').filter(id => id.trim())
+      : [];
+    
+    const employees = await employeeService.getEmployeesByDepartments(companyId, departmentIds);
+    res.json(employees);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const getEmployee = async (req, res) => {
   try {
     const companyId = req.user.isSuperAdmin || req.user.role === 'SUPER_ADMIN' ? undefined : req.user.companyId;

@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 /**
  * Middleware pour vérifier la validité de la licence de l'entreprise.
  * Ignoré pour les super admins.
+ * Auto-expire licenses when end date passes.
  */
 export const licenseMiddleware = async (req, res, next) => {
   try {
@@ -18,7 +19,7 @@ export const licenseMiddleware = async (req, res, next) => {
       return res.status(400).json({ error: "Utilisateur sans entreprise associée." });
     }
 
-    const license = await prisma.license.findUnique({
+    let license = await prisma.license.findUnique({
       where: { companyId },
       select: { id: true, status: true, endsAt: true, maxUsers: true, maxEmployees: true },
     });
@@ -32,6 +33,16 @@ export const licenseMiddleware = async (req, res, next) => {
 
     const now = new Date();
     const isExpired      = license.endsAt && license.endsAt < now;
+    
+    // Auto-update license status to EXPIRED if end date has passed
+    if (isExpired && license.status !== 'EXPIRED') {
+      license = await prisma.license.update({
+        where: { id: license.id },
+        data: { status: 'EXPIRED' },
+        select: { id: true, status: true, endsAt: true, maxUsers: true, maxEmployees: true },
+      });
+    }
+    
     const isInvalidStatus = !["ACTIVE", "TRIAL"].includes(license.status);
 
     if (isExpired || isInvalidStatus) {

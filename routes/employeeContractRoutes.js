@@ -6,6 +6,8 @@ const router = express.Router();
 router.post("/", controller.createContract);
 router.get("/", controller.getContracts);
 router.get("/employee/:employeeId", controller.getContractsByEmployee);
+router.post("/:id/generate-pdf", controller.generateContractPdf);
+router.get("/pdf/:filename", controller.downloadContractPdf);
 router.get("/:id", controller.getContract);
 router.put("/:id", controller.updateContract);
 router.delete("/:id", controller.deleteContract);

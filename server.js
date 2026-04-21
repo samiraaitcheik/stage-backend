@@ -2,6 +2,11 @@ import "dotenv/config";
 import express    from "express";
 import cors       from "cors";
 import { Router } from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import authRoutes                    from "./routes/authRoutes.js";
 import superAdminRoutes             from "./routes/superAdminRoutes.js";
@@ -24,6 +29,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:4200", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files (for PDFs and other uploads)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Public ───────────────────────────────────────────────────────────────────
 
@@ -79,6 +87,8 @@ api.delete("/employees/:id", employeeCtrl.deleteEmployee);
 // Contracts
 api.post  ("/contracts",                            contractCtrl.createContract);
 api.get   ("/contracts",                            contractCtrl.getContracts);
+api.post  ("/contracts/:id/generate-pdf",           contractCtrl.generateContractPdf);
+api.get   ("/contracts/pdf/:filename",              contractCtrl.downloadContractPdf);
 api.get   ("/contracts/:id",                        contractCtrl.getContract);
 api.get   ("/contracts/employee/:employeeId",       contractCtrl.getContractsByEmployee);
 api.put   ("/contracts/:id",                        contractCtrl.updateContract);

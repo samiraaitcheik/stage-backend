@@ -22,6 +22,18 @@ export const getEmployees = async (companyId) =>
     orderBy: { createdAt: "desc" },
   });
 
+export const getEmployeesByDepartments = async (companyId, departmentIds = []) => {
+  const where = {
+    companyId,
+    ...(departmentIds.length > 0 && { departmentId: { in: departmentIds } }),
+  };
+  return prisma.employee.findMany({
+    where,
+    include: includeRelations,
+    orderBy: { createdAt: "desc" },
+  });
+};
+
 export const getEmployeeById = async (id, companyId) => {
   const where = companyId ? { id, companyId } : { id };
   const employee = await prisma.employee.findFirst({
