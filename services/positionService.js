@@ -6,25 +6,34 @@ const includeRelations = {
 };
 
 export const createPosition = async (data) => {
-  return await prisma.position.create({ data, include: includeRelations });
+  return prisma.position.create({ data, include: includeRelations });
 };
 
-export const getPositions = async () => {
-  return await prisma.position.findMany({ include: includeRelations });
+export const getPositions = async (companyId) => {
+  return prisma.position.findMany({
+    where: companyId ? { companyId } : {},
+    include: includeRelations,
+    orderBy: { createdAt: "desc" },
+  });
 };
 
-export const getPositionById = async (id) => {
-  const position = await prisma.position.findUnique({ where: { id }, include: includeRelations });
-  if (!position) throw { status: 404, message: "Position not found" };
+export const getPositionById = async (id, companyId) => {
+  const position = await prisma.position.findFirst({
+    where: companyId ? { id, companyId } : { id },
+    include: includeRelations,
+  });
+  if (!position) {
+    throw { status: 404, message: "Position not found" };
+  }
   return position;
 };
 
-export const updatePosition = async (id, data) => {
-  await getPositionById(id);
-  return await prisma.position.update({ where: { id }, data, include: includeRelations });
+export const updatePosition = async (id, data, companyId) => {
+  await getPositionById(id, companyId);
+  return prisma.position.update({ where: { id }, data, include: includeRelations });
 };
 
-export const deletePosition = async (id) => {
-  await getPositionById(id);
+export const deletePosition = async (id, companyId) => {
+  await getPositionById(id, companyId);
   await prisma.position.delete({ where: { id } });
 };

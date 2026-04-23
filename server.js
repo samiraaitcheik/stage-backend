@@ -51,7 +51,7 @@ api.use(licenseMiddleware);
 // IMPORTANT: /companies/mine doit être AVANT /companies/:id pour éviter le conflit de route
 api.post  ("/companies",      requireSuperAdmin, companyCtrl.createCompany);
 api.get   ("/companies/mine", companyCtrl.getMyCompany);  // ← avant /:id
-api.get   ("/companies",      requireSuperAdmin, companyCtrl.getCompanies);
+api.get   ("/companies",      companyCtrl.getCompanies);
 api.get   ("/companies/:id",  companyCtrl.getCompany);
 api.put   ("/companies/:id",  companyCtrl.updateCompany);
 api.delete("/companies/:id",  requireSuperAdmin, companyCtrl.deleteCompany);
@@ -114,7 +114,7 @@ api.delete("/variable-items/:id",                 variableCtrl.deleteVariableIte
 api.post  ("/licenses",                           requireSuperAdmin, licenseCtrl.createLicense);
 api.get   ("/licenses",                           requireSuperAdmin, licenseCtrl.getLicenses);
 api.get   ("/licenses/:id",                       requireSuperAdmin, licenseCtrl.getLicense);
-api.get   ("/licenses/company/:companyId",        requireAdmin, licenseCtrl.getLicenseByCompany);
+api.get   ("/licenses/company/:companyId",        licenseCtrl.getLicenseByCompany);
 api.put   ("/licenses/:id",                       requireSuperAdmin, licenseCtrl.updateLicense);
 api.delete("/licenses/:id",                       requireSuperAdmin, licenseCtrl.deleteLicense);
 

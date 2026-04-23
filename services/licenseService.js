@@ -4,35 +4,38 @@ const includeRelations = {
   company: { select: { id: true, name: true } },
 };
 
-// ✅ Helper — nettoie et convertit les données avant envoi à Prisma
 const sanitize = (data) => ({
   ...data,
-  // Dates → ISO DateTime
   startsAt: data.startsAt ? new Date(data.startsAt) : undefined,
-  endsAt:   data.endsAt && data.endsAt !== "" ? new Date(data.endsAt) : undefined,
-  // Nombres — supprimer si vide/null
-  maxUsers:     data.maxUsers     ? Number(data.maxUsers)     : undefined,
+  endsAt: data.endsAt && data.endsAt !== "" ? new Date(data.endsAt) : undefined,
+  maxUsers: data.maxUsers ? Number(data.maxUsers) : undefined,
   maxEmployees: data.maxEmployees ? Number(data.maxEmployees) : undefined,
   maxStorageMb: data.maxStorageMb ? Number(data.maxStorageMb) : undefined,
 });
 
 export const createLicense = async (data) => {
-  return await prisma.license.create({
+  return prisma.license.create({
     data: sanitize(data),
     include: includeRelations,
   });
 };
 
-export const getLicenses = async () => {
-  return await prisma.license.findMany({ include: includeRelations });
+export const getLicenses = async (companyId) => {
+  return prisma.license.findMany({
+    where: companyId ? { companyId } : {},
+    include: includeRelations,
+    orderBy: { createdAt: "desc" },
+  });
 };
 
-export const getLicenseById = async (id) => {
-  const license = await prisma.license.findUnique({
-    where: { id },
+export const getLicenseById = async (id, companyId) => {
+  const license = await prisma.license.findFirst({
+    where: companyId ? { id, companyId } : { id },
     include: includeRelations,
   });
-  if (!license) throw { status: 404, message: "License not found" };
+  if (!license) {
+    throw { status: 404, message: "License not found" };
+  }
   return license;
 };
 
@@ -41,24 +44,24 @@ export const getLicenseByCompany = async (companyId) => {
     where: { companyId },
     include: includeRelations,
   });
-  if (!license) throw { status: 404, message: "License not found for this company" };
-  
+  if (!license) {
+    throw { status: 404, message: "License not found for this company" };
+  }
+
   const now = new Date();
-  // Auto-expire license if end date has passed
-  if (license.endsAt && license.endsAt < now && license.status !== 'EXPIRED') {
+  if (license.endsAt && license.endsAt < now && license.status !== "EXPIRED") {
     license = await prisma.license.update({
       where: { id: license.id },
-      data: { status: 'EXPIRED' },
+      data: { status: "EXPIRED" },
       include: includeRelations,
     });
-    
-    // Also deactivate all users for this company
+
     await prisma.user.updateMany({
       where: { companyId, isSuperAdmin: false },
-      data: { status: 'BLOCKED' }
+      data: { status: "BLOCKED" },
     });
   }
-  
+
   return license;
 };
 
@@ -73,16 +76,17 @@ export const getActiveLicenseByCompany = async (companyId) => {
       maxEmployees: true,
     },
   });
-  if (!license) throw { status: 403, message: "Company has no valid license" };
+  if (!license) {
+    throw { status: 403, message: "Company has no valid license" };
+  }
 
   const now = new Date();
   const isExpired = license.endsAt && license.endsAt < now;
-  
-  // Auto-update license status to EXPIRED if end date has passed
-  if (isExpired && license.status !== 'EXPIRED') {
+
+  if (isExpired && license.status !== "EXPIRED") {
     license = await prisma.license.update({
       where: { id: license.id },
-      data: { status: 'EXPIRED' },
+      data: { status: "EXPIRED" },
       select: {
         id: true,
         status: true,
@@ -91,17 +95,19 @@ export const getActiveLicenseByCompany = async (companyId) => {
         maxEmployees: true,
       },
     });
-    
-    // Also deactivate all users for this company
+
     await prisma.user.updateMany({
       where: { companyId, isSuperAdmin: false },
-      data: { status: 'BLOCKED' }
+      data: { status: "BLOCKED" },
     });
   }
-  
+
   const isInvalidStatus = !["ACTIVE", "TRIAL"].includes(license.status);
   if (isExpired || isInvalidStatus) {
-    throw { status: 403, message: "License is expired or inactive. Access to the application has been blocked." };
+    throw {
+      status: 403,
+      message: "License is expired or inactive. Access to the application has been blocked.",
+    };
   }
 
   return license;
@@ -121,7 +127,7 @@ export const enforceLicenseLimit = async (companyId, type) => {
     if (currentUsers >= license.maxUsers) {
       throw {
         status: 403,
-        message: `La limite de ${license.maxUsers} utilisateurs a été atteinte pour cette licence.`,
+        message: `La limite de ${license.maxUsers} utilisateurs a ete atteinte pour cette licence.`,
       };
     }
   }
@@ -131,7 +137,7 @@ export const enforceLicenseLimit = async (companyId, type) => {
     if (currentEmployees >= license.maxEmployees) {
       throw {
         status: 403,
-        message: `La limite de ${license.maxEmployees} employés a été atteinte pour cette licence.`,
+        message: `La limite de ${license.maxEmployees} employes a ete atteinte pour cette licence.`,
       };
     }
   }
@@ -141,7 +147,7 @@ export const enforceLicenseLimit = async (companyId, type) => {
 
 export const updateLicense = async (id, data) => {
   await getLicenseById(id);
-  return await prisma.license.update({
+  return prisma.license.update({
     where: { id },
     data: sanitize(data),
     include: includeRelations,

@@ -62,7 +62,7 @@ export const getUserById = async (id, companyId) => {
   return user;
 };
 
-export const updateUser = async (id, data, companyId) => {
+export const updateUser = async (id, data, companyId, canManageAllRoles = false) => {
   const { password, permissions, ...rest } = data;
 
   const updateData = { ...rest };
@@ -74,8 +74,16 @@ export const updateUser = async (id, data, companyId) => {
     updateData.passwordHash = await hashPassword(password);
   }
 
-  const existing = await prisma.user.findFirst({ where: companyId ? { id, companyId } : { id } });
+  const existing = await prisma.user.findFirst({
+    where: companyId ? { id, companyId, isSuperAdmin: false } : { id },
+  });
   if (!existing) notFound();
+
+  if (!canManageAllRoles) {
+    delete updateData.role;
+    delete updateData.isSuperAdmin;
+    delete updateData.companyId;
+  }
 
   const user = await prisma.user.update({
     where: { id },
@@ -87,7 +95,9 @@ export const updateUser = async (id, data, companyId) => {
 };
 
 export const deleteUser = async (id, companyId) => {
-  const existing = await prisma.user.findFirst({ where: companyId ? { id, companyId } : { id } });
+  const existing = await prisma.user.findFirst({
+    where: companyId ? { id, companyId, isSuperAdmin: false } : { id },
+  });
   if (!existing) notFound();
   await prisma.user.delete({ where: { id } });
 };

@@ -12,42 +12,49 @@ const parseDates = (data) => ({
 });
 
 export const createContract = async (data) => {
-  return await prisma.employeeContract.create({
-    data: parseDates(data), 
+  return prisma.employeeContract.create({
+    data: parseDates(data),
     include: includeRelations,
   });
 };
 
-export const getContracts = async () => {
-  return await prisma.employeeContract.findMany({ include: includeRelations });
+export const getContracts = async (companyId) => {
+  return prisma.employeeContract.findMany({
+    where: companyId ? { companyId } : {},
+    include: includeRelations,
+    orderBy: { createdAt: "desc" },
+  });
 };
 
-export const getContractById = async (id) => {
-  const contract = await prisma.employeeContract.findUnique({
-    where: { id },
+export const getContractById = async (id, companyId) => {
+  const contract = await prisma.employeeContract.findFirst({
+    where: companyId ? { id, companyId } : { id },
     include: includeRelations,
   });
-  if (!contract) throw { status: 404, message: "Contract not found" };
+  if (!contract) {
+    throw { status: 404, message: "Contract not found" };
+  }
   return contract;
 };
 
-export const getContractsByEmployee = async (employeeId) => {
-  return await prisma.employeeContract.findMany({
-    where: { employeeId },
+export const getContractsByEmployee = async (employeeId, companyId) => {
+  return prisma.employeeContract.findMany({
+    where: companyId ? { employeeId, companyId } : { employeeId },
     include: includeRelations,
+    orderBy: { startDate: "desc" },
   });
 };
 
-export const updateContract = async (id, data) => {
-  await getContractById(id);
-  return await prisma.employeeContract.update({
+export const updateContract = async (id, data, companyId) => {
+  await getContractById(id, companyId);
+  return prisma.employeeContract.update({
     where: { id },
-    data: parseDates(data), 
+    data: parseDates(data),
     include: includeRelations,
   });
 };
 
-export const deleteContract = async (id) => {
-  await getContractById(id);
+export const deleteContract = async (id, companyId) => {
+  await getContractById(id, companyId);
   await prisma.employeeContract.delete({ where: { id } });
 };

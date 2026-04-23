@@ -1,4 +1,4 @@
-import prisma from "../prismaClient.js";
+import { prisma } from "../prismaClient.js";
 
 const includeRelations = {
   company: { select: { id: true, name: true } },
@@ -6,34 +6,37 @@ const includeRelations = {
 };
 
 export const createLog = async (data) => {
-  return await prisma.auditLog.create({ data, include: includeRelations });
+  return prisma.auditLog.create({ data, include: includeRelations });
 };
 
-export const getLogs = async () => {
-  return await prisma.auditLog.findMany({
+export const getLogs = async (companyId) => {
+  return prisma.auditLog.findMany({
+    where: companyId ? { companyId } : {},
     include: includeRelations,
     orderBy: { createdAt: "desc" },
   });
 };
 
-export const getLogById = async (id) => {
-  const log = await prisma.auditLog.findUnique({
-    where: { id },
+export const getLogById = async (id, companyId) => {
+  const log = await prisma.auditLog.findFirst({
+    where: companyId ? { id, companyId } : { id },
     include: includeRelations,
   });
-  if (!log) throw { status: 404, message: "Audit log not found" };
+  if (!log) {
+    throw { status: 404, message: "Audit log not found" };
+  }
   return log;
 };
 
 export const getLogsByCompany = async (companyId) => {
-  return await prisma.auditLog.findMany({
+  return prisma.auditLog.findMany({
     where: { companyId },
     include: includeRelations,
     orderBy: { createdAt: "desc" },
   });
 };
 
-export const deleteLog = async (id) => {
-  await getLogById(id);
+export const deleteLog = async (id, companyId) => {
+  await getLogById(id, companyId);
   await prisma.auditLog.delete({ where: { id } });
 };
