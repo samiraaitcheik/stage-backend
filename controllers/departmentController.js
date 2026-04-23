@@ -27,6 +27,7 @@ export const createDepartment = async (req, res) => {
 export const getDepartments = async (req, res) => {
   try {
     const companyId = getCompanyContext(req);
+    console.log(req);
     res.json(await departmentService.getDepartments(companyId));
   } catch (error) {
     res.status(500).json({ error: error.message });
